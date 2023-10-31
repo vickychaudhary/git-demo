@@ -8,16 +8,17 @@ const prisma = new PrismaClient();
 
 // Create Tweet
 router.post('/', async (req, res) => {
-  const { content, image } = req.body;
+  const { content, image
+  } = req.body;
   // @ts-ignore
   const user = req.user;
-
+  const userId = user.id;
   try {
     const result = await prisma.tweet.create({
       data: {
         content,
         image,
-        userId: user.id,
+        userId, // TODO manage based on auth user
       },
       include: { user: true },
     });
@@ -38,9 +39,9 @@ router.get('/', async (req, res) => {
           name: true,
           username: true,
           image: true,
-        },
-      },
-    },
+        }
+      }
+    }
   });
   res.json(allTweets);
 });
@@ -52,7 +53,16 @@ router.get('/:id', async (req, res) => {
 
   const tweet = await prisma.tweet.findUnique({
     where: { id: Number(id) },
-    include: { user: true },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          image: true,
+        }
+      }
+    },
   });
   if (!tweet) {
     return res.status(404).json({ error: 'Tweet not found!' });
@@ -62,9 +72,19 @@ router.get('/:id', async (req, res) => {
 });
 
 // update Tweet
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  res.status(501).json({ error: `Not Implemented: ${id}` });
+  const { content, image } = req.body;
+
+  try {
+    const result = await prisma.tweet.update({
+      where: { id: Number(id) },
+      data: { content, image },
+    });
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ error: `Failed to update the user` });
+  }
 });
 
 // delete Tweet
